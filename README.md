@@ -1,4 +1,4 @@
-# buildkite-on-demand-template
+# Buildkite On-Demand Template
 
 A quick launch starter template for Buildkite On-Demand.
 

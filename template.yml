@@ -63,7 +63,7 @@ Resources:
         EcsCluster: !Ref EcsCluster
         VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.VpcSubnetIds, !Ref VpcSubnetIds ]
         # TODO this needs a corresponding top level parameter
-        EcsHostSecurityGroup: !Ref Vpc.Outputs.SecurityGroup
+        EcsHostSecurityGroup: !GetAtt Vpc.Outputs.SecurityGroup
 
   BuildkiteAgentTokenParameter:
     Type: AWS::SSM::Parameter

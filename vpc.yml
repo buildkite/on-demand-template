@@ -55,7 +55,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
+      NatGatewayId: !Ref NatGateway
   PublicSubnetOneRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -92,6 +92,16 @@ Resources:
       GroupId: !Ref AgentContainerSecurityGroup
       IpProtocol: -1
       CidrIpv6: ::/0
+
+  NatGatewayOne:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnetOne
+      
+  NatGatewayTwo:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnetTwo
 
 Outputs:
   VpcSubnetIds:

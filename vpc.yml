@@ -69,7 +69,7 @@ Resources:
   AgentContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Access to the Fargate containers
+      GroupDescription: Access to the containers
       VpcId: !Ref VPC
   AgentContainerSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress

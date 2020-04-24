@@ -10,10 +10,10 @@ Parameters:
     Type: Number
     Default: '6'
     Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
-  ECSAMI:
+  EcsAmi:
     Description: AMI ID
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/amzn2-ami-ecs-hvm-2.0.20181112-x86_64-ebs/image_id
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -46,14 +46,14 @@ Resources:
   ContainerInstances:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: !Ref 'ECSAMI'
+      ImageId: !Ref EcsAmi
       SecurityGroups: [!Ref 'EcsHostSecurityGroup']
       InstanceType: !Ref 'InstanceType'
       IamInstanceProfile: !Ref 'EC2InstanceProfile'
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
-          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
           yum install -y aws-cfn-bootstrap
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
   AutoscalingRole:
@@ -85,9 +85,6 @@ Resources:
       Roles:
         - !Ref EC2Role
 
-  # Role for the EC2 hosts. This allows the ECS agent on the EC2 hosts
-  # to communciate with the ECS control plane, as well as download the docker
-  # images from ECR to run on your host.
   EC2Role:
     Type: AWS::IAM::Role
     Properties:

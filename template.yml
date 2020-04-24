@@ -55,6 +55,17 @@ Resources:
   EcsCluster:
     Type: AWS::ECS::Cluster
 
+  Ec2Instances:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ec2.yml
+      Parameters:
+        EcsAmi:
+        EcsCluster: !Ref EcsCluster
+        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.VpcSubnetIds, !Ref VpcSubnetIds ]
+        # TODO this needs a corresponding top level parameter
+        EcsHostSecurityGroup: !Ref Vpc.Outputs.SecurityGroup
+
   BuildkiteAgentTokenParameter:
     Type: AWS::SSM::Parameter
     Properties:

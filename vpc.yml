@@ -95,5 +95,8 @@ Resources:
 
 Outputs:
   VpcSubnetIds:
-    Description: The VpcSubnetIds for scheduling containers in.
+    Description: VPC Subnet Ids to schedule buildkite-agent containers in.
     Value: !Join [ ',', [ !Ref PublicSubnetOne, !Ref PublicSubnetTwo ] ]
+  SecurityGroup:
+    Description: Security group for buildkite-agent containers.
+    Value: !GetAtt AgentContainerSecurityGroup.GroupId

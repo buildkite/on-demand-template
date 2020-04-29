@@ -44,6 +44,9 @@ Conditions:
   CreateVpc: !Equals [ !Join [ ',', !Ref VpcSubnetIds ], '' ]
 
 Resources:
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+
   Vpc:
     Type: AWS::CloudFormation::Stack
     Condition: CreateVpc
@@ -51,9 +54,6 @@ Resources:
       TemplateURL: vpc.yml
       Parameters:
         PrivateSubnets: 'true'
-
-  EcsCluster:
-    Type: AWS::ECS::Cluster
 
   Ec2Instances:
     Type: AWS::CloudFormation::Stack

@@ -37,6 +37,16 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIp.AllocationId
+      SubnetId: !Ref PublicSubnet
+
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -47,7 +57,7 @@ Resources:
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      SubnetId: !Ref PrivateSubnet
+      VpcId: !Ref Vpc
   PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -55,14 +65,10 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
   PrivateWildcardRoute:
     Type: AWS::EC2::Route
-      RouteTableId: PrivateRouteTable
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
-
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      SubnetId: !Ref PublicSubnet
 
 Outputs:
   PublicSubnetId:

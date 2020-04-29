@@ -67,6 +67,8 @@ Resources:
       TemplateURL: cluster.yml
       Parameters:
         VpcSubnetIds: !Join [ ',', !Ref VpcSubnetIds ]
+        # Uncomment to swap from Fargate to EC2 cluster instances.
+        # LaunchType: EC2
 
   Scheduler:
     Type: AWS::Serverless::Application

@@ -68,6 +68,11 @@ Resources:
       Parameters:
         VpcSubnetIds: !Join [ ',', !Ref VpcSubnetIds ]
         # Uncomment to swap from Fargate to EC2 cluster instances.
+        #
+        # This option isn't exposed as a template parameter. Tuning an EC2
+        # cluster is out of scope. This is simply provided as an example for how
+        # to provide your own non-Fargate cluster instances.
+        #
         # LaunchType: EC2
 
   Scheduler:

@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Buildkite On-Demand Cluster
+
+Parameters:
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+  LaunchType:
+    Type: String
+    AllowedValues:
+      - FARGATE
+      - EC2
+    Default: FARGATE
+
+Conditions:
+  CreateVpc: !Equals [ !Join [ ',', !Ref VpcSubnetIds ], '' ]
+  IsEc2: !Equals [ !Ref LaunchType, 'EC2' ]
+
+Resources:
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+
+  Vpc:
+    Type: AWS::CloudFormation::Stack
+    Condition: CreateVpc
+    Properties:
+      TemplateURL: vpc.yml
+      Parameters:
+        PrivateSubnets:
+          !If
+            - IsEc2
+            - 'true'
+            - 'false'
+  
+  Ec2Instances:
+    Type: AWS::CloudFormation::Stack
+    Condition: IsEc2
+    Properties:
+      TemplateURL: cluster/ec2.yml
+      Parameters:
+        EcsCluster: !Ref EcsCluster
+        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
+        EcsHostSecurityGroup: !GetAtt Vpc.Outputs.SecurityGroup
+
+Outputs:
+  EcsClusterName:
+    Value: !Ref EcsCluster
+  VpcSubnetIds:
+    Value:
+      !If
+        - CreateVpc
+        - !If
+            - IsEc2
+            - !GetAtt Vpc.Outputs.PrivateSubnetIds
+            - !GetAtt Vpc.Outputs.PublicSubnetIds
+        - !Ref VpcSubnetIds
+  EcsLaunchType:
+    Value: !Ref LaunchType

@@ -40,13 +40,7 @@ Parameters:
     Default: ''
     Description: Comma separated list of VPC subnets to launch agent containers in. If left blank a simple VPC with public subnets, suitable for most use cases, will be created.
 
-Conditions:
-  CreateVpc: !Equals [ !Join [ ',', !Ref VpcSubnetIds ], '' ]
-
 Resources:
-  EcsCluster:
-    Type: AWS::ECS::Cluster
-
   BuildkiteAgentTokenParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -67,33 +61,12 @@ Resources:
     Properties:
       TemplateURL: agents.yml
 
-  # The default stack uses AWS Fargate for compute. To use EC2 container
-  # instances instead:
-  #
-  #  1. Uncomment the Ec2Instances resource.
-  #  2. Change the Vpc PrivateSubnets parameter to 'true'
-  #     This creates a private subnet and nat gateway for each vpc availability
-  #     zone.
-  #  3. Update the Scheduler resource parameters.
-  #  3.1 Change the EcsLaunchType to 'EC2'
-  #  3.2 Set VpcSubnetIds to !GetAtt Vpc.Outputs.PrivateSubnetIds
-  
-  # Ec2Instances:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     TemplateURL: ec2.yml
-  #     Parameters:
-  #       EcsCluster: !Ref EcsCluster
-  #       VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
-  #       EcsHostSecurityGroup: !GetAtt Vpc.Outputs.SecurityGroup
-
-  Vpc:
+  Cluster:
     Type: AWS::CloudFormation::Stack
-    Condition: CreateVpc
     Properties:
-      TemplateURL: vpc.yml
+      TemplateURL: cluster.yml
       Parameters:
-        PrivateSubnets: 'false'
+        VpcSubnetIds: !Ref VpcSubnetIds
 
   Scheduler:
     Type: AWS::Serverless::Application
@@ -105,6 +78,6 @@ Resources:
         BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
         BuildkiteQueue: !Ref BuildkiteQueue
         EventBridgeBusName: !Ref EventBridgeBusName
-        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PublicSubnetIds, !Ref VpcSubnetIds ]
-        EcsClusterName: !Ref EcsCluster
-        EcsLaunchType: FARGATE
+        VpcSubnetIds: !GetAtt Cluster.Outputs.VpcSubnetIds
+        EcsClusterName: !GetAtt Cluster.Outputs.EcsClusterName
+        EcsLaunchType: !GetAtt Cluster.Outputs.EcsLaunchType

@@ -1,76 +1,88 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: >-
-  Buildkite On-Demand Default Vpc
+Description: Buildkite On-Demand Default Vpc
+
+Parameters:
+  PrivateSubnets:
+    Type: String
+    Description: Create a private VPC subnet and NAT Gateway in each availability zone.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+
+Conditions:
+  CreatePrivateSubnets: !Equals [ !Ref PrivateSubnets, 'true' ]
 
 Mappings:
   SubnetConfig:
     VPC:
       CIDR: 10.0.0.0/16
-    PublicOne:
-      CIDR: 10.0.0.0/24
-    PublicTwo:
-      CIDR: 10.0.1.0/24
+    AZOne:
+      Public: 10.0.0.0/24
+      Private: 10.0.1.0/24
+    AZTwo:
+      Public: 10.0.2.0/24
+      Private: 10.0.3.0/24
 
 Resources:
-  VPC:
+  Vpc:
     Type: AWS::EC2::VPC
     Properties:
       EnableDnsSupport: true
       EnableDnsHostnames: true
       CidrBlock: !FindInMap [SubnetConfig, VPC, CIDR]
-  PublicSubnetOne:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone:
-         Fn::Select:
-         - 0
-         - Fn::GetAZs: !Ref AWS::Region
-      VpcId: !Ref VPC
-      CidrBlock: !FindInMap [SubnetConfig, PublicOne, CIDR]
-      MapPublicIpOnLaunch: true
-  PublicSubnetTwo:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone:
-         Fn::Select:
-         - 1
-         - Fn::GetAZs: !Ref AWS::Region
-      VpcId: !Ref VPC
-      CidrBlock: !FindInMap [SubnetConfig, PublicTwo, CIDR]
-      MapPublicIpOnLaunch: true
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
   GatewayAttachement:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref Vpc
       InternetGatewayId: !Ref InternetGateway
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-  PublicRoute:
-    Type: AWS::EC2::Route
+
+  AZOne:
+    Type: AWS::CloudFormation::Stack
     DependsOn: GatewayAttachement
     Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-  PublicSubnetOneRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
+      TemplateURL: vpc/availability_zone.yml
+      Parameters:
+        Vpc: !Ref Vpc
+        InternetGateway: !Ref InternetGateway
+        AvailabilityZone: 
+          Fn::Select:
+            - 0
+            - Fn::GetAZs: !Ref AWS::Region
+        PublicCidr: !FindInMap [SubnetConfig, AZOne, Public]
+        PrivateCidr:
+          !If
+            - CreatePrivateSubnets
+            - !FindInMap [SubnetConfig, AZOne, Private]
+            - ''
+
+  AZTwo:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: GatewayAttachement
     Properties:
-      SubnetId: !Ref PublicSubnetOne
-      RouteTableId: !Ref PublicRouteTable
-  PublicSubnetTwoRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnetTwo
-      RouteTableId: !Ref PublicRouteTable
+      TemplateURL: vpc/availability_zone.yml
+      Parameters:
+        Vpc: !Ref Vpc
+        InternetGateway: !Ref InternetGateway
+        AvailabilityZone:
+          Fn::Select:
+            - 1
+            - Fn::GetAZs: !Ref AWS::Region
+        PublicCidr: !FindInMap [SubnetConfig, AZTwo, Public]
+        PrivateCidr:
+          !If
+            - CreatePrivateSubnets
+            - !FindInMap [SubnetConfig, AZTwo, Private]
+            - ''
+
   AgentContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Access to the Fargate containers
-      VpcId: !Ref VPC
+      GroupDescription: Access to the containers
+      VpcId: !Ref Vpc
   AgentContainerSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -94,6 +106,16 @@ Resources:
       CidrIpv6: ::/0
 
 Outputs:
-  VpcSubnetIds:
-    Description: The VpcSubnetIds for scheduling containers in.
-    Value: !Join [ ',', [ !Ref PublicSubnetOne, !Ref PublicSubnetTwo ] ]
+  PublicSubnetIds:
+    Description: Public VPC Subnet Ids, have a route to the Internet Gateway.
+    Value: !Join [ ',', [ !GetAtt AZOne.Outputs.PublicSubnetId, !GetAtt AZTwo.Outputs.PublicSubnetId ] ]
+  PrivateSubnetIds:
+    Description: Private VPC Subnet Ids, have a route to the NAT Gateway. Depends on the PrivateSubnets parameter.
+    Value:
+      !If
+        - CreatePrivateSubnets
+        - !Join [ ',', [ !GetAtt AZOne.Outputs.PrivateSubnetId, !GetAtt AZTwo.Outputs.PrivateSubnetId ] ]
+        - ''
+  SecurityGroup:
+    Description: Security group for buildkite-agent containers.
+    Value: !GetAtt AgentContainerSecurityGroup.GroupId

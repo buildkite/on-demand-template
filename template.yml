@@ -40,38 +40,13 @@ Parameters:
     Default: ''
     Description: Comma separated list of VPC subnets to launch agent containers in. If left blank a simple VPC with public subnets, suitable for most use cases, will be created.
 
-Conditions:
-  CreateVpc: !Equals [ !Join [ ',', !Ref VpcSubnetIds ], '' ]
-
 Resources:
-  Vpc:
-    Type: AWS::CloudFormation::Stack
-    Condition: CreateVpc
-    Properties:
-      TemplateURL: vpc.yml
-
-  EcsCluster:
-    Type: AWS::ECS::Cluster
-
   BuildkiteAgentTokenParameter:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /buildkite/agent-token
       Type: String
       Value: !Ref BuildkiteAgentToken
-
-  Scheduler:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:832577133680:applications/buildkite-on-demand-scheduler
-        SemanticVersion: '0.2.0'
-      Parameters:
-        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
-        BuildkiteQueue: !Ref BuildkiteQueue
-        EventBridgeBusName: !Ref EventBridgeBusName
-        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.VpcSubnetIds, !Ref VpcSubnetIds ]
-        EcsClusterName: !Ref EcsCluster
 
   Macro:
     Type: AWS::Serverless::Application
@@ -85,3 +60,31 @@ Resources:
     DependsOn: Macro
     Properties:
       TemplateURL: agents.yml
+
+  Cluster:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: cluster.yml
+      Parameters:
+        VpcSubnetIds: !Join [ ',', !Ref VpcSubnetIds ]
+        # Uncomment to swap from Fargate to EC2 cluster instances.
+        #
+        # This option isn't exposed as a template parameter. Tuning an EC2
+        # cluster is out of scope. This is simply provided as an example for how
+        # to provide your own non-Fargate cluster instances.
+        #
+        # LaunchType: EC2
+
+  Scheduler:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:832577133680:applications/buildkite-on-demand-scheduler
+        SemanticVersion: '0.3.0'
+      Parameters:
+        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
+        BuildkiteQueue: !Ref BuildkiteQueue
+        EventBridgeBusName: !Ref EventBridgeBusName
+        VpcSubnetIds: !GetAtt Cluster.Outputs.VpcSubnetIds
+        EcsClusterName: !GetAtt Cluster.Outputs.EcsClusterName
+        EcsLaunchType: !GetAtt Cluster.Outputs.EcsLaunchType

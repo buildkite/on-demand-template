@@ -12,6 +12,10 @@ Parameters:
     Type: String
   PrivateCidr:
     Type: String
+    Default: ''
+
+Conditions:
+  CreatePrivateSubnet: !Not [ !Equals [ !Ref PrivateCidr, '' ] ]
 
 Resources:
   PublicSubnet:
@@ -39,16 +43,19 @@ Resources:
 
   ElasticIp:
     Type: AWS::EC2::EIP
+    Condition: CreatePrivateSubnet
     Properties:
       Domain: vpc
   NatGateway:
     Type: AWS::EC2::NatGateway
+    Condition: CreatePrivateSubnet
     Properties:
       AllocationId: !GetAtt ElasticIp.AllocationId
       SubnetId: !Ref PublicSubnet
 
   PrivateSubnet:
     Type: AWS::EC2::Subnet
+    Condition: CreatePrivateSubnet
     Properties:
       AvailabilityZone: !Ref AvailabilityZone
       VpcId: !Ref Vpc
@@ -56,15 +63,18 @@ Resources:
       MapPublicIpOnLaunch: false
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: CreatePrivateSubnet
     Properties:
       VpcId: !Ref Vpc
   PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreatePrivateSubnet
     Properties:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
   PrivateWildcardRoute:
     Type: AWS::EC2::Route
+    Condition: CreatePrivateSubnet
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
@@ -74,4 +84,8 @@ Outputs:
   PublicSubnetId:
     Value: !Ref PublicSubnet
   PrivateSubnetId:
-    Value: !Ref PrivateSubnet
+    Value:
+      !If
+        - CreatePrivateSubnet
+        - !Ref PrivateSubnet
+        - ''

@@ -33,7 +33,9 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier: !Ref VpcSubnetIds
-      LaunchConfigurationName: !Ref 'ContainerInstances'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ContainerInstances
+        Version: !GetAtt ContainerInstances.LatestVersionNumber
       MinSize: '1'
       MaxSize: !Ref 'MaxSize'
       DesiredCapacity: !Ref 'DesiredCapacity'
@@ -44,18 +46,19 @@ Resources:
       AutoScalingReplacingUpdate:
         WillReplace: 'true'
   ContainerInstances:
-    Type: AWS::AutoScaling::LaunchConfiguration
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      ImageId: !Ref EcsAmi
-      SecurityGroups: [!Ref 'EcsHostSecurityGroup']
-      InstanceType: !Ref 'InstanceType'
-      IamInstanceProfile: !Ref 'EC2InstanceProfile'
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -xe
-          echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
-          yum install -y aws-cfn-bootstrap
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+      LaunchTemplateDate:
+        ImageId: !Ref EcsAmi
+        SecurityGroups: [!Ref 'EcsHostSecurityGroup']
+        InstanceType: !Ref 'InstanceType'
+        IamInstanceProfile: !Ref 'EC2InstanceProfile'
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash -xe
+            echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
+            yum install -y aws-cfn-bootstrap
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
   AutoscalingRole:
     Type: AWS::IAM::Role
     Properties:

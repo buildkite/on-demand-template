@@ -50,7 +50,7 @@ Resources:
     Properties:
       LaunchTemplateData:
         ImageId: !Ref EcsAmi
-        SecurityGroups:
+        SecurityGroupIds:
           - !Ref 'EcsHostSecurityGroup'
         InstanceType: !Ref 'InstanceType'
         IamInstanceProfile:

@@ -59,7 +59,7 @@ Resources:
       TemplateURL: ec2.yml
       Parameters:
         EcsCluster: !Ref EcsCluster
-        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.VpcSubnetIds, !Ref VpcSubnetIds ]
+        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
         # TODO this needs a corresponding top level parameter
         EcsHostSecurityGroup: !GetAtt Vpc.Outputs.SecurityGroup
 
@@ -80,7 +80,7 @@ Resources:
         BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
         BuildkiteQueue: !Ref BuildkiteQueue
         EventBridgeBusName: !Ref EventBridgeBusName
-        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.VpcSubnetIds, !Ref VpcSubnetIds ]
+        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
         EcsClusterName: !Ref EcsCluster
 
   Macro:

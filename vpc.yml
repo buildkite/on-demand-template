@@ -86,9 +86,12 @@ Resources:
       CidrIpv6: ::/0
 
 Outputs:
-  VpcSubnetIds:
-    Description: VPC Subnet Ids to schedule buildkite-agent containers in.
+  PublicSubnetIds:
+    Description: Public VPC Subnet Ids, have a route to the Internet Gateway.
     Value: !Join [ ',', [ !GetAtt AZOne.Outputs.PublicSubnetId, !GetAtt AZTwo.Outputs.PublicSubnetId ] ]
+  PrivateSubnetIds:
+    Description: Private VPC Subnet Ids, have a route to the NAT Gateway.
+    Value: !Join [ ',', [ !GetAtt AZOne.Outputs.PrivateSubnetId, !GetAtt AZTwo.Outputs.PrivateSubnetId ] ]
   SecurityGroup:
     Description: Security group for buildkite-agent containers.
     Value: !GetAtt AgentContainerSecurityGroup.GroupId

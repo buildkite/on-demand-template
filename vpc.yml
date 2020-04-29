@@ -1,87 +1,68 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: >-
-  Buildkite On-Demand Default Vpc
+Description: Buildkite On-Demand Default Vpc
 
 Mappings:
   SubnetConfig:
     VPC:
       CIDR: 10.0.0.0/16
-    PublicOne:
-      CIDR: 10.0.0.0/24
-    PublicTwo:
-      CIDR: 10.0.1.0/24
+    AZOne:
+      Public: 10.0.0.0/24
+      Private: 10.0.1.0/24
+    AZTwo:
+      Public: 10.0.2.0/24
+      Private: 10.0.3.0/24
 
 Resources:
-  VPC:
+  Vpc:
     Type: AWS::EC2::VPC
     Properties:
       EnableDnsSupport: true
       EnableDnsHostnames: true
       CidrBlock: !FindInMap [SubnetConfig, VPC, CIDR]
-  PublicSubnetOne:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone:
-         Fn::Select:
-         - 0
-         - Fn::GetAZs: !Ref AWS::Region
-      VpcId: !Ref VPC
-      CidrBlock: !FindInMap [SubnetConfig, PublicOne, CIDR]
-      MapPublicIpOnLaunch: true
-  PublicSubnetTwo:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone:
-         Fn::Select:
-         - 1
-         - Fn::GetAZs: !Ref AWS::Region
-      VpcId: !Ref VPC
-      CidrBlock: !FindInMap [SubnetConfig, PublicTwo, CIDR]
-      MapPublicIpOnLaunch: true
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
   GatewayAttachement:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref Vpc
       InternetGatewayId: !Ref InternetGateway
-  PublicRouteTableOne:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-  PublicRouteOne:
-    Type: AWS::EC2::Route
+
+  AZOne:
+    Type: AWS::CloudFormation::Stack
     DependsOn: GatewayAttachement
     Properties:
-      RouteTableId: !Ref PublicRouteTableOne
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayOne
-  PublicSubnetOneRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnetOne
-      RouteTableId: !Ref PublicRouteTableOne
-  PublicRouteTableTwo:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-  PublicRouteTwo:
-    Type: AWS::EC2::Route
+      TemplateURL: vpc/availability_zone.yml
+      Parameters:
+        Vpc: !Ref Vpc
+        InternetGateway: !Ref InternetGateway
+        AvailabilityZone: 
+          Fn::Select:
+            - 0
+            - Fn::GetAZs: !Ref AWS::Region
+        PublicCidr: !FindInMap [SubnetConfig, AZOne, Public]
+        PrivateCidr: !FindInMap [SubnetConfig, AZOne, Private]
+
+  AZTwo:
+    Type: AWS::CloudFormation::Stack
     DependsOn: GatewayAttachement
     Properties:
-      RouteTableId: !Ref PublicRouteTableTwo
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayTwo
-  PublicSubnetTwoRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnetTwo
-      RouteTableId: !Ref PublicRouteTableTwo
+      TemplateURL: vpc/availability_zone.yml
+      Parameters:
+        Vpc: !Ref Vpc
+        InternetGateway: !Ref InternetGateway
+        AvailabilityZone:
+          Fn::Select:
+            - 1
+            - Fn::GetAZs: !Ref AWS::Region
+        PublicCidr: !FindInMap [SubnetConfig, AZTwo, Public]
+        PrivateCidr: !FindInMap [SubnetConfig, AZTwo, Private]
+
   AgentContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Access to the containers
-      VpcId: !Ref VPC
+      VpcId: !Ref Vpc
   AgentContainerSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -104,20 +85,10 @@ Resources:
       IpProtocol: -1
       CidrIpv6: ::/0
 
-  NatGatewayOne:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      SubnetId: !Ref PublicSubnetOne
-      
-  NatGatewayTwo:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      SubnetId: !Ref PublicSubnetTwo
-
 Outputs:
   VpcSubnetIds:
     Description: VPC Subnet Ids to schedule buildkite-agent containers in.
-    Value: !Join [ ',', [ !Ref PublicSubnetOne, !Ref PublicSubnetTwo ] ]
+    Value: !Join [ ',', [ !GetAtt AZOne.Outputs.PublicSubnetId, !GetAtt AZTwo.Outputs.PublicSubnetId ] ]
   SecurityGroup:
     Description: Security group for buildkite-agent containers.
     Value: !GetAtt AgentContainerSecurityGroup.GroupId

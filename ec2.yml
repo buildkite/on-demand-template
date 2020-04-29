@@ -101,22 +101,37 @@ Resources:
           Action: ['sts:AssumeRole']
       Path: /
       Policies:
+      - PolicyName: ecs-cluster
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - ecs:DeregisterContainerInstance
+              - ecs:RegisterContainerInstance
+              - ecs:Submit*
+            Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${EcsCluster}
+      - PolicyName: ecs-cluster-tag
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - ecs:Poll
+            - ecs:StartTelemetrySession
+            Resource: '*'
+            Condition:
+              ArnEquals:
+                "ecs:cluster": !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${EcsCluster}
       - PolicyName: ecs-service
         PolicyDocument:
           Statement:
           - Effect: Allow
             Action:
-              - 'ecs:DeregisterContainerInstance'
-              - 'ecs:DiscoverPollEndpoint'
-              - 'ecs:Poll'
-              - 'ecs:RegisterContainerInstance'
-              - 'ecs:StartTelemetrySession'
-              - 'ecs:Submit*'
-              - 'logs:CreateLogStream'
-              - 'logs:PutLogEvents'
-              - 'ecr:GetAuthorizationToken'
-              - 'ecr:BatchGetImage'
-              - 'ecr:GetDownloadUrlForLayer'
+              - ecs:DiscoverPollEndpoint
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - ecr:GetAuthorizationToken
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
             Resource: '*'
 
   ECSRole:

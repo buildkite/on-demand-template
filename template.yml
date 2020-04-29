@@ -47,42 +47,12 @@ Resources:
   EcsCluster:
     Type: AWS::ECS::Cluster
 
-  Vpc:
-    Type: AWS::CloudFormation::Stack
-    Condition: CreateVpc
-    Properties:
-      TemplateURL: vpc.yml
-      Parameters:
-        PrivateSubnets: 'true'
-
-  Ec2Instances:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: ec2.yml
-      Parameters:
-        EcsCluster: !Ref EcsCluster
-        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
-        EcsHostSecurityGroup: !GetAtt Vpc.Outputs.SecurityGroup
-
   BuildkiteAgentTokenParameter:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /buildkite/agent-token
       Type: String
       Value: !Ref BuildkiteAgentToken
-
-  Scheduler:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:832577133680:applications/buildkite-on-demand-scheduler
-        SemanticVersion: '0.2.0'
-      Parameters:
-        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
-        BuildkiteQueue: !Ref BuildkiteQueue
-        EventBridgeBusName: !Ref EventBridgeBusName
-        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
-        EcsClusterName: !Ref EcsCluster
 
   Macro:
     Type: AWS::Serverless::Application
@@ -96,3 +66,45 @@ Resources:
     DependsOn: Macro
     Properties:
       TemplateURL: agents.yml
+
+  # The default stack uses AWS Fargate for compute. To use EC2 container
+  # instances instead:
+  #
+  #  1. Uncomment the Ec2Instances resource.
+  #  2. Change the Vpc PrivateSubnets parameter to 'true'
+  #     This creates a private subnet and nat gateway for each vpc availability
+  #     zone.
+  #  3. Update the Scheduler resource parameters.
+  #  3.1 Change the EcsLaunchType to 'EC2'
+  #  3.2 Set VpcSubnetIds to !GetAtt Vpc.Outputs.PrivateSubnetIds
+  
+  # Ec2Instances:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: ec2.yml
+  #     Parameters:
+  #       EcsCluster: !Ref EcsCluster
+  #       VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
+  #       EcsHostSecurityGroup: !GetAtt Vpc.Outputs.SecurityGroup
+
+  Vpc:
+    Type: AWS::CloudFormation::Stack
+    Condition: CreateVpc
+    Properties:
+      TemplateURL: vpc.yml
+      Parameters:
+        PrivateSubnets: 'false'
+
+  Scheduler:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:832577133680:applications/buildkite-on-demand-scheduler
+        SemanticVersion: '0.3.0'
+      Parameters:
+        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
+        BuildkiteQueue: !Ref BuildkiteQueue
+        EventBridgeBusName: !Ref EventBridgeBusName
+        VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PublicSubnetIds, !Ref VpcSubnetIds ]
+        EcsClusterName: !Ref EcsCluster
+        EcsLaunchType: FARGATE

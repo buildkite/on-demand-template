@@ -1,6 +1,18 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Buildkite On-Demand Default Vpc
 
+Parameters:
+  PrivateSubnets:
+    Type: String
+    Description: Create a private VPC subnet and NAT Gateway in each availability zone.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+
+Conditions:
+  CreatePrivateSubnets: !Equals [ !Ref PrivateSubnets, 'true' ]
+
 Mappings:
   SubnetConfig:
     VPC:
@@ -41,7 +53,11 @@ Resources:
             - 0
             - Fn::GetAZs: !Ref AWS::Region
         PublicCidr: !FindInMap [SubnetConfig, AZOne, Public]
-        PrivateCidr: !FindInMap [SubnetConfig, AZOne, Private]
+        PrivateCidr:
+          !If
+            - CreatePrivateSubnets
+            - !FindInMap [SubnetConfig, AZOne, Private]
+            - ''
 
   AZTwo:
     Type: AWS::CloudFormation::Stack
@@ -56,7 +72,11 @@ Resources:
             - 1
             - Fn::GetAZs: !Ref AWS::Region
         PublicCidr: !FindInMap [SubnetConfig, AZTwo, Public]
-        PrivateCidr: !FindInMap [SubnetConfig, AZTwo, Private]
+        PrivateCidr:
+          !If
+            - CreatePrivateSubnets
+            - !FindInMap [SubnetConfig, AZTwo, Private]
+            - ''
 
   AgentContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -90,8 +110,12 @@ Outputs:
     Description: Public VPC Subnet Ids, have a route to the Internet Gateway.
     Value: !Join [ ',', [ !GetAtt AZOne.Outputs.PublicSubnetId, !GetAtt AZTwo.Outputs.PublicSubnetId ] ]
   PrivateSubnetIds:
-    Description: Private VPC Subnet Ids, have a route to the NAT Gateway.
-    Value: !Join [ ',', [ !GetAtt AZOne.Outputs.PrivateSubnetId, !GetAtt AZTwo.Outputs.PrivateSubnetId ] ]
+    Description: Private VPC Subnet Ids, have a route to the NAT Gateway. Depends on the PrivateSubnets parameter.
+    Value:
+      !If
+        - CreatePrivateSubnets
+        - !Join [ ',', [ !GetAtt AZOne.Outputs.PrivateSubnetId, !GetAtt AZTwo.Outputs.PrivateSubnetId ] ]
+        - ''
   SecurityGroup:
     Description: Security group for buildkite-agent containers.
     Value: !GetAtt AgentContainerSecurityGroup.GroupId

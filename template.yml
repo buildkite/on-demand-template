@@ -49,6 +49,8 @@ Resources:
     Condition: CreateVpc
     Properties:
       TemplateURL: vpc.yml
+      Parameters:
+        PrivateSubnets: 'true'
 
   EcsCluster:
     Type: AWS::ECS::Cluster
@@ -60,7 +62,6 @@ Resources:
       Parameters:
         EcsCluster: !Ref EcsCluster
         VpcSubnetIds: !If [ CreateVpc, !GetAtt Vpc.Outputs.PrivateSubnetIds, !Ref VpcSubnetIds ]
-        # TODO this needs a corresponding top level parameter
         EcsHostSecurityGroup: !GetAtt Vpc.Outputs.SecurityGroup
 
   BuildkiteAgentTokenParameter:

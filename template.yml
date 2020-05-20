@@ -52,7 +52,7 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:832577133680:applications/buildkite-on-demand-transform
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-transform
         SemanticVersion: '0.1.1'
 
   Agents:
@@ -79,7 +79,7 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:832577133680:applications/buildkite-on-demand-scheduler
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-scheduler
         SemanticVersion: '0.3.0'
       Parameters:
         BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter

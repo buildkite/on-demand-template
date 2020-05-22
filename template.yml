@@ -44,7 +44,7 @@ Resources:
   BuildkiteAgentTokenParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /buildkite/agent-token
+      Name: !Sub /${AWS::StackName}/buildkite/agent-token
       Type: String
       Value: !Ref BuildkiteAgentToken
 

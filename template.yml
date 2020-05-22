@@ -80,7 +80,7 @@ Resources:
     Properties:
       Location:
         ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-scheduler
-        SemanticVersion: '0.3.0'
+        SemanticVersion: '0.4.0'
       Parameters:
         BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
         BuildkiteQueue: !Ref BuildkiteQueue
@@ -88,3 +88,5 @@ Resources:
         VpcSubnetIds: !GetAtt Cluster.Outputs.VpcSubnetIds
         EcsClusterName: !GetAtt Cluster.Outputs.EcsClusterName
         EcsLaunchType: !GetAtt Cluster.Outputs.EcsLaunchType
+        ExecutionRolePrefix: !Sub /${AWS::StackName}/BuildkiteExecutionRole/
+        TaskRolePrefix: !Sub /${AWS::StackName}/BuildkiteTaskRole/

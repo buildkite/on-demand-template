@@ -4,6 +4,16 @@ Description: >-
 
 Transform: Buildkite-Agents-2020-03-09
 
+Parameters:
+  ExecutionRolePrefix:
+    Type: String
+    Description: IAM Path prefix to use for ECS Execution roles.
+    AllowedPattern: (\u002F[\u0021-\u007F]+\u002F)
+  TaskRolePrefix:
+    Type: String
+    Description: IAM Path prefix to use for ECS Task roles.
+    AllowedPattern: (\u002F[\u0021-\u007F]+\u002F)
+
 Resources:
   Default:
     Type: Buildkite::ECS::TaskDefinition

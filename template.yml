@@ -60,6 +60,9 @@ Resources:
     DependsOn: Macro
     Properties:
       TemplateURL: agents.yml
+      Parameters:
+        ExecutionRolePrefix: !Sub /${AWS::StackName}/BuildkiteExecutionRole/
+        TaskRolePrefix: !Sub /${AWS::StackName}/BuildkiteTaskRole/
 
   Cluster:
     Type: AWS::CloudFormation::Stack

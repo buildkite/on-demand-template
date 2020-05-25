@@ -53,7 +53,7 @@ Resources:
     Properties:
       Location:
         ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-transform
-        SemanticVersion: '0.2.0'
+        SemanticVersion: '0.3.0'
 
   Agents:
     Type: AWS::CloudFormation::Stack
@@ -61,6 +61,7 @@ Resources:
     Properties:
       TemplateURL: agents.yml
       Parameters:
+        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
         ExecutionRolePrefix: !Sub /${AWS::StackName}/BuildkiteExecutionRole/
         TaskRolePrefix: !Sub /${AWS::StackName}/BuildkiteTaskRole/
 

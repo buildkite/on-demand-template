@@ -5,6 +5,9 @@ Description: >-
 Transform: Buildkite-Agents-2020-03-09
 
 Parameters:
+  BuildkiteAgentTokenParameterPath:
+    Type: AWS::SSM::Parameter::Name
+    Description: Buildkite Agent registration token parameter path, can be a String or SecureString.
   ExecutionRolePrefix:
     Type: String
     Description: IAM Path prefix to use for ECS Execution roles.

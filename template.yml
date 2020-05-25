@@ -44,7 +44,7 @@ Resources:
   BuildkiteAgentTokenParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub /${AWS::StackName}/buildkite/agent-token
+      Name: !Sub /${AWS::StackName}/buildkite-agent/token
       Type: String
       Value: !Ref BuildkiteAgentToken
 
@@ -53,13 +53,17 @@ Resources:
     Properties:
       Location:
         ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-transform
-        SemanticVersion: '0.1.1'
+        SemanticVersion: '0.3.0'
 
   Agents:
     Type: AWS::CloudFormation::Stack
     DependsOn: Macro
     Properties:
       TemplateURL: agents.yml
+      Parameters:
+        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
+        ExecutionRolePrefix: !Sub /${AWS::StackName}/BuildkiteExecutionRole/
+        TaskRolePrefix: !Sub /${AWS::StackName}/BuildkiteTaskRole/
 
   Cluster:
     Type: AWS::CloudFormation::Stack
@@ -80,7 +84,7 @@ Resources:
     Properties:
       Location:
         ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-scheduler
-        SemanticVersion: '0.3.0'
+        SemanticVersion: '0.4.1'
       Parameters:
         BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
         BuildkiteQueue: !Ref BuildkiteQueue
@@ -88,3 +92,5 @@ Resources:
         VpcSubnetIds: !GetAtt Cluster.Outputs.VpcSubnetIds
         EcsClusterName: !GetAtt Cluster.Outputs.EcsClusterName
         EcsLaunchType: !GetAtt Cluster.Outputs.EcsLaunchType
+        ExecutionRolePrefix: !Sub /${AWS::StackName}/BuildkiteExecutionRole/
+        TaskRolePrefix: !Sub /${AWS::StackName}/BuildkiteTaskRole/

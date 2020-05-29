@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Buildkite On-Demand
+
+Transform: AWS::Serverless-2016-10-31
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: Buildkite
+        Parameters:
+          - BuildkiteAgentToken
+          - BuildkiteQueue
+      -
+        Label:
+          default: AWS
+        Parameters:
+          - EventBridgeBusName
+          - VpcSubnetIds
+    ParameterLabels:
+      VpcSubnetIds:
+        default: "(Optional) Which VPC subnets should agent containers run in?"
+
+Parameters:
+  EventBridgeBusName:
+    Type: String
+    Description: Name of an EventBridge Bus in this region that receives Buildkite Partner Events, see https://buildkite.com/docs/integrations/amazon-eventbridge.
+    AllowedPattern: ^[a-zA-Z0-9\-\._/]+
+  BuildkiteQueue:
+    Type: String
+    Description: Queue name that agents will be scheduled for on-demand, targeted in pipeline steps using an agent query rule "queue={value}".
+    AllowedPattern: ^[a-zA-Z0-9\-_]{1,255}
+  BuildkiteAgentToken:
+    Type: String
+    Description: Buildkite agent registration token, see https://buildkite.com/docs/agent/v3/tokens.
+    NoEcho: true
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Default: ''
+    Description: Comma separated list of VPC subnets to launch agent containers in. If left blank a simple VPC with public subnets, suitable for most use cases, will be created.
+
+Resources:
+  BuildkiteAgentTokenParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${AWS::StackName}/buildkite-agent/token
+      Type: String
+      Value: !Ref BuildkiteAgentToken
+
+  Macro:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-transform
+        SemanticVersion: '0.3.0'
+
+  Agents:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: Macro
+    Properties:
+      TemplateURL: agents.yml
+      Parameters:
+        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
+        ExecutionRolePrefix: !Sub /${AWS::StackName}/BuildkiteExecutionRole/
+        TaskRolePrefix: !Sub /${AWS::StackName}/BuildkiteTaskRole/
+
+  Cluster:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: cluster.yml
+      Parameters:
+        VpcSubnetIds: !Join [ ',', !Ref VpcSubnetIds ]
+        LaunchType: EC2
+
+  Scheduler:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:172840064832:applications/buildkite-on-demand-scheduler
+        SemanticVersion: '0.4.1'
+      Parameters:
+        BuildkiteAgentTokenParameterPath: !Ref BuildkiteAgentTokenParameter
+        BuildkiteQueue: !Ref BuildkiteQueue
+        EventBridgeBusName: !Ref EventBridgeBusName
+        VpcSubnetIds: !GetAtt Cluster.Outputs.VpcSubnetIds
+        EcsClusterName: !GetAtt Cluster.Outputs.EcsClusterName
+        EcsLaunchType: !GetAtt Cluster.Outputs.EcsLaunchType
+        ExecutionRolePrefix: !Sub /${AWS::StackName}/BuildkiteExecutionRole/
+        TaskRolePrefix: !Sub /${AWS::StackName}/BuildkiteTaskRole/

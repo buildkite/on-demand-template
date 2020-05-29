@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Buildkite On-Demand Agents
+
+Transform: Buildkite-Agents-2020-03-09
+
+Parameters:
+  BuildkiteAgentTokenParameterPath:
+    Type: AWS::SSM::Parameter::Name
+    Description: Buildkite Agent registration token parameter path, can be a String or SecureString.
+  ExecutionRolePrefix:
+    Type: String
+    Description: IAM Path prefix to use for ECS Execution roles.
+    AllowedPattern: (\u002F[\u0021-\u007F]+\u002F)
+  TaskRolePrefix:
+    Type: String
+    Description: IAM Path prefix to use for ECS Task roles.
+    AllowedPattern: (\u002F[\u0021-\u007F]+\u002F)
+
+Resources:
+  Default:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Name: agent
+          EntryPoint:
+            - /buildkite/bin/buildkite-agent
+          Command:
+            - start
+          Essential: true
+          Image: buildkite/on-demand-base:docker
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: /aws/ecs/buildkite
+              awslogs-stream-prefix: ecs
+          Environment:
+            - Name: BUILDKITE_BUILD_PATH
+              Value: /buildkite/builds
+            - Name: BUILDKITE_HOOKS_PATH
+              Value: /buildkite/hooks
+            - Name: BUILDKITE_PLUGINS_PATH
+              Value: /buildkite/plugins
+          Secrets:
+            - Name: BUILDKITE_AGENT_TOKEN
+              ValueFrom: !Ref BuildkiteAgentTokenParameterPath
+          DependsOn:
+            - Condition: COMPLETE
+              ContainerName: agent-init
+          MountPoints:
+            - ContainerPath: /var/run/docker.sock
+              SourceVolume: docker-socket
+          VolumesFrom:
+            - SourceContainer: agent-init
+        - Name: agent-init
+          EntryPoint:
+            - /bin/sh
+            - -c
+          Command:
+            - echo container=agent-init at=initalised
+          Essential: false
+          Image: keithduncan/buildkite-sidecar:latest
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: /aws/ecs/buildkite
+              awslogs-stream-prefix: ecs
+      Cpu: 256
+      Memory: 512
+      Family: buildkite
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      Volumes:
+        - Name: docker-socket
+          Host:
+            SourcePath: /var/run/docker.sock
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Path: !Ref ExecutionRolePrefix
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: FetchDecryptSecrets
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${BuildkiteAgentTokenParameterPath}"
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/aws/ssm"
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: Default
+    Properties:
+      LogGroupName: /aws/ecs/buildkite
+      RetentionInDays: 1

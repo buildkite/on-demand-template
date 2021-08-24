@@ -21,6 +21,6 @@ Resources:
   Default:
     Type: Buildkite::ECS::TaskDefinition
     Properties:
-      Image: keithduncan/buildkite-base
-      BuildkiteAgentImage: keithduncan/buildkite-sidecar
+      Image: buildkite/on-demand-base
+      BuildkiteAgentImage: buildkite/agent:3-sidecar
       TaskFamily: buildkite
